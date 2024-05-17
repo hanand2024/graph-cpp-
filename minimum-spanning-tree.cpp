@@ -35,6 +35,8 @@ public:
     //keeping track of edges found
     vector<vector<int> > selected_edges;
     
+    //finding all edges in the graph for Kruskal
+    vector<vector <int> > vector_edges;
     
     //constructor
     // Define infinity as a very large value in the constructor
@@ -76,7 +78,7 @@ public:
                 if((static_cast<double>(rand())/RAND_MAX < density)){
                     if(i!=j){
                         distance = 1 + rand() % distanceRange; // Random distance between 1 and distanceRange
-                        color = 1 + rand() % numColors; // Random distance between 1 and distanceRange
+                        color = 1 + rand() % numColors; // Random distance between 1 and number of Colors
                     }
                     addEdge(i,j,distance,1, color);
                     cout<< "Added Edge (" << i << ", "<< j << ") with distance = " << distance << endl;
@@ -218,9 +220,85 @@ public:
         return make_pair(mst,mst_length);
     }
     
+    
+    static void sortMatrix(std::vector<std::vector<int> >& matrix) {
+            auto comparator = [](const std::vector<int>& a, const std::vector<int>& b) {
+                if (a[3] != b[3]) // Compare based on fourth column - which has colors
+                    return a[3] < b[3];
+                else // If the first column values are equal, compare based on the third column - distances
+                    return a[2] < b[2];
+            };
+
+            std::sort(matrix.begin(), matrix.end(), comparator);
+    }
+    
+    void kruskal(vector<vector <int> >& vector_dist, int color){
+        //First create the list of edges from the output of the random graph generator which is a 2-d matrix
+        for(int i=0;i<vector_dist.size();++i){
+            for(int j=i+1;j<vector_dist[i].size();++j){
+                if(vector_dist[i][j]>0){
+                    vector<int> edge;
+                    edge.push_back(i);
+                    edge.push_back(j);
+                    edge.push_back(vector_dist[i][j]);
+                    edge.push_back(vector_color[i][j]);
+                    vector_edges.push_back(edge);
+                }
+            }
+        }
+        
+        cout<<"Found " << vector_edges.size() << " distinct edges" <<endl;
+        
+        sortMatrix(vector_edges);
+        
+        //cout<< "Edge matrix shape is [" <<vector_edges.size()<< "," <<vector_edges[0].size()<<"]" <<endl;
+        for(const auto& row:vector_edges){
+            for(int val:row){
+                cout<< val << "\t";
+            }
+            cout<< endl;
+        }
+        
+        vector<int> mst_edges; //Minimum spanning tree edges
+        int mst_length_kruskal = 0;
+        
+        mst_edges.push_back(vector_edges[0][0]);
+        mst_edges.push_back(vector_edges[0][1]);
+        mst_length_kruskal +=vector_edges[0][2];
+        
+        cout<<"Added edge to Kruskal ["<< vector_edges[0][0]<<" , "<< vector_edges[0][1] << "]"<< endl;
+        cout<<"Kruskal MST Length = "<< mst_length_kruskal << endl;
+        
+        for(int i=1;i<vector_edges.size();i++){
+            auto first_edge =find(mst_edges.begin(),mst_edges.end(),vector_edges[i][0]);
+            auto second_edge =find(mst_edges.begin(),mst_edges.end(),vector_edges[i][1]);
+            //If both edges have not been added, then it means the edge is unique and can be added to picked_edges
+            if(first_edge!=mst_edges.end() && second_edge!=mst_edges.end()){
+                cout<<"Edges "<<vector_edges[i][0]<< " and " << vector_edges[i][1] << " already have been added to MST. Closed loop." <<endl;
+            }else{
+                if(color == vector_edges[i][3]){
+                    mst_length_kruskal +=vector_edges[i][2];
+                    
+                    mst_edges.push_back(vector_edges[i][0]);
+                    mst_edges.push_back(vector_edges[i][1]);
+                    cout<<"Added edge to Kruskal ["<< vector_edges[i][0]<<" , "<< vector_edges[i][1] << "]"<< endl;
+                    cout<<"Kruskal MST Length = "<< mst_length_kruskal << endl;
+                }
+            }
+        }
+        cout << "MST with Kruskal's algorithm is = " ;
+        int x=0;
+        for (const auto val : mst_edges){
+            cout << val << " ";
+            if(x%2==1){cout<< ", ";}else{cout << "->";}
+            x++;
+        }
+        cout<<endl<<"Kruskal MST Length = "<< mst_length_kruskal << endl;
+    }
+    
     //destructor
     ~Graph(){
-        cout << "Destructor called"<< endl;
+        cout <<endl<< "Destructor called"<< endl;
     };
 };
 
@@ -232,7 +310,7 @@ int main(){
     
     int src;
     int numVertices; // Number of vertices in each graph
-    int numColors;
+    int numColors=1;
     int color;
     
     cout<< "How many vertices would you like to have (should be >1,ideal is >10) ? : ";
@@ -267,7 +345,6 @@ int main(){
     //Prim's algorithm for Minimum Spanning Tree
     pair<vector<int>, int> mst_output;
     mst_output = g.shortestEdges(g.vector_dist,0, g.vector_color,color);
-    cout << "Length of minimum spanning tree = " <<mst_output.second <<endl;
     
     cout << "The nodes were visited in this sequence: ";
     for(int i=0;i<mst_output.first.size();++i){
@@ -282,6 +359,10 @@ int main(){
         }
         cout<< "Length = " << g.selected_edges[i][2]<<endl;
     }
+    cout << "Length of minimum spanning tree = " <<mst_output.second <<endl;
+    
+    //Kruskal's algorithm for Minimum Spanning Tree
+    g.kruskal(g.vector_dist,color);
     
     return 0;
 }
